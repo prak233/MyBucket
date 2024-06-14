@@ -1,0 +1,45 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "value": "westeurope" 
+        },
+        "storageName": {
+            "value": "we015"
+        },
+        "envName": {
+            "value": "dev"
+        },
+        "vmOffer": {
+            "value": "WindowsServer"
+        },
+        "vmsku": {
+            "value": "2022-datacenter-azure-edition"
+        },
+        "vmPublisher": {
+            "value": "MicrosoftWindowsServer"
+        },
+        "projectName": {
+            "value": "netmaze"
+        },
+        "vnetAddressPrefix": {
+            "value": "10.0.0.0/16"
+        },
+        "webappSubnetPrefix": {
+            "value": "10.0.0.0/24"
+        },
+        "adminSubnetPrefix": {
+            "value": "10.0.1.0/24"
+        },
+        "dbSubnetPrefix": {
+            "value": "10.0.2.0/24"
+        },
+        "adminUsername": {
+            "value": "pratul"
+        },
+        "adminPassword": {
+            "value": "coforge@1234"
+        }
+    }
+}
