@@ -2,7 +2,12 @@
 param projectName string
 
 @description('enter the env name')
-param envName string
+@allowed([
+  'Prod'
+  'Test'
+  'Dev'
+])
+param envName string = 'Prod'
 
 @description('enter the VM instances to deploy')
 param vmCount int
