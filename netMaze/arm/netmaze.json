@@ -43,11 +43,11 @@
 
         "envName": {
             "type": "string",
-            "defaultValue": "prod",
+            "defaultValue": "Prod",
             "allowedValues": [
-                "prod",
-                "dev",
-                "testing"
+                "Prod",
+                "Dev",
+                "Test"
             ]
         },
         "projectName": {
