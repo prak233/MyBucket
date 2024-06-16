@@ -3,13 +3,31 @@
     "contentVersion": "1.0.0.0",
     "parameters": {
         "location": {
-            "value": "centralindia" 
+            "value": "eastasia" 
         },
         "storageName": {
-            "value": "centralind015"
+            "value": "eastasia015"
+        },
+        "skuTypes": {
+            "value": "Standard_LRS"
+        },
+        "vmCount": {
+            "value": 3
         },
         "envName": {
-            "value": "test"
+            "value": "Test"
+        },
+        "projectName": {
+            "value": "Netmaze"
+        },
+        "vnetAddressPrefix": {
+            "value": "192.168.0.0/16"
+        },
+        "adminUsername": {
+            "value": "pratul"
+        },
+        "adminPassword": {
+            "value": "coforge@1234"
         },
         "vmOffer": {
             "value": "WindowsServer"
@@ -19,27 +37,7 @@
         },
         "vmPublisher": {
             "value": "MicrosoftWindowsServer"
-        },
-        "projectName": {
-            "value": "netmaze"
-        },
-        "vnetAddressPrefix": {
-            "value": "192.168.0.0/16"
-        },
-        "webappSubnetPrefix": {
-            "value": "192.168.0.0/24"
-        },
-        "adminSubnetPrefix": {
-            "value": "192.168.1.0/24"
-        },
-        "dbSubnetPrefix": {
-            "value": "192.168.2.0/24"
-        },
-        "adminUsername": {
-            "value": "pratul"
-        },
-        "adminPassword": {
-            "value": "coforge@1234"
         }
+        
     }
 }

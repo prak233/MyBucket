@@ -24,8 +24,8 @@
             "type": "string",
             "defaultValue": "Standard_LRS",
             "allowedValues": [
-                "Standard_LRS",
                 "Standard_ZRS",
+                "Standard_LRS",
                 "Standard_GRS",
                 "Standard_GZRS",
                 "Premium_LRS",
@@ -102,7 +102,6 @@
      
         
     },
-    "functions": [],
     "variables": {
         "uniqueStorageName": "[concat(parameters('storageName'),uniqueString(resourceGroup().id))]",
         "vnetName": "[format('{0}-{1}Vnet',parameters('envName'),parameters('projectName'))]",
@@ -119,7 +118,9 @@
             "apiVersion": "2023-01-01",
             "kind": "StorageV2",
             "name": "[variables('uniqueStorageName')]",
-            "sku": "[parameters('skuTypes')]",
+            "sku": {
+                "name": "[parameters('skuTypes')]"
+            },
             "location": "[parameters('location')]",
             "properties": {
                 "allowBlobPublicAccess": true
@@ -149,10 +150,6 @@
             "apiVersion": "2023-04-01",
             "location": "[parameters('location')]",
             "name": "[variables('nsgName')]",
-            "copy": {
-                "name": "nsgCopy",
-                "count": "[parameters('vmCount')]"
-            },
             "properties": {
                 "securityRules": [
                     {
@@ -212,36 +209,41 @@
                         "[parameters('vnetAddressPrefix')]"
                     ]
                 }
-                
-            }         
-            
-         },
+                 
+            }
 
-         {
-            "type": "Microsoft.Network/virtualnetworks/subnets",
+        },
+
+        {
+            "type": "Microsoft.Network/virtualNetworks/subnets",
             "apiVersion": "2023-04-01",
-            "name": "[concat(variables('subnetName'),copyIndex())]",
+            "name": "[concat(variables('vnetName'), '/', variables('subnetName'), copyIndex())]",
+            "properties": {
+                "addressPrefix": "[format('{0}.{1}.{2}.0/24', split(parameters('vnetAddressPrefix'), '.')[0], split(parameters('vnetAddressPrefix'), '.')[1], copyIndex())]",
+                "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups',variables('nsgName'))]"
+                }
+            },
             "copy": {
                 "name": "subnetCopy",
                 "count": "[parameters('vmCount')]"
-            },
-            "properties": {
-                "addressPrefix": "[format('{0}.{1}.{2}.0/24', split(parameters('vnetAddressPrefix'), '.')[0], split(parameters('vnetAddressPrefix'),'.')[1], copyIndex())]",
-                "networkSecurityGroup": {
-                    "id": "[resourceId('Microsoft.Network/networkSecurityGroups', concat(variables('nsgName'), copyIndex()))]"
-                }
-            },
+             },
+            
             "dependsOn": [
-                "[resourceId('Microsoft.Network/virtualnetworks', variables('vnetName'))]",
-                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgName'))]"
-            ]
-         },
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups',variables('nsgName'))]"
+      ]
+    },
 
          {
             "type": "Microsoft.Network/networkInterfaces",
             "apiVersion": "2023-04-01",
             "location":"[parameters('location')]",
             "name": "[concat(variables('nicName'),copyIndex())]",
+            "copy": {
+                "name": "nicloop",
+                "count": "[parameters('vmCount')]"
+            },
             "properties": {
                 "ipConfigurations": [
                     {
@@ -249,16 +251,19 @@
                         "properties": {
                             "privateIPAllocationMethod": "Dynamic",
                             "subnet": {
-                                        "id": "[resourceId('Microsoft.Network/virtualnetworks/subnets',concat(variables('subnetName'),copyIndex()))]"
+                                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets',variables('vnetName'),concat(variables('subnetName'), copyIndex()))]"
                                       },
-                            "publicIPAddress": "[resourceId('Microsoft.Network/publicIPAddresses',concat(variables('publicipName'),copyIndex()))]"
+                            "publicIPAddress":{
+                                        "id": "[resourceId('Microsoft.Network/publicIPAddresses',concat(variables('publicipName'),copyIndex()))]"
                                     }
+                                }
                     }
                ]
             },
             "dependsOn": [
                 "[resourceId('Microsoft.Network/publicIPAddresses', concat(variables('publicipName'),copyIndex()))]",
-                "[resourceId('Microsoft.Network/virtualnetworks/subnets', concat(variables('subnetName'),copyIndex()))]"
+                "[resourceId('Microsoft.Network/virtualNetworks/subnets',variables('vnetName'),concat(variables('subnetName'), copyIndex()))]"
+                
 
             ]
          },
@@ -285,8 +290,7 @@
                     "createOption": "FromImage",
                     "managedDisk": {
                         "storageAccountType": "Premium_LRS"
-                    },
-                    "name": "webvm-osdisk"
+                        }
                     }
                 },
                 "securityProfile": {
@@ -323,67 +327,7 @@
             },
             
             "dependsOn": [
-                "[resourceId('Microsoft.Network/networkInterfaces', format('web-{0}',variables('nicName')))]",
-                "[resourceId('Microsoft.Storage/storageAccounts', variables('uniqueStorageName'))]"
-            ]
-        },
-
-        {
-            "type": "Microsoft.Compute/virtualMachines",
-            "apiVersion": "2023-03-01",
-            "name": "[format('adminvm-{0}',parameters('projectName'))]",
-           "location": "[parameters('location')]",
-           "properties": {
-            "storageProfile": {
-                "imageReference": {
-                    "offer": "[parameters('vmOffer')]",
-                    "publisher": "[parameters('vmPublisher')]",
-                    "sku": "[parameters('vmsku')]",
-                    "version": "latest"
-                },
-                "osDisk": {
-                    "createOption": "FromImage",
-                    "managedDisk": {
-                        "storageAccountType": "Premium_LRS"
-                    },
-                    "name":"adminvm-osdisk"
-                    }
-                },
-                "securityProfile": {
-                    "securityType": "TrustedLaunch",
-                    "uefiSettings": {
-                        "secureBootEnabled": true,
-                        "vTpmEnabled": true
-                    }
-                },
-                "osProfile": {
-                    "adminUsername": "[parameters('adminUsername')]",
-                    "adminPassword": "[parameters('adminPassword')]",
-                    "windowsConfiguration": {
-                        "enableAutomaticUpdates": true
-                    },
-                    "computerName": "[format('adminvm-{0}',parameters('projectName'))]"
-                },
-                "networkProfile": {
-                    "networkInterfaces": [
-                        {
-                            "id": "[resourceId('Microsoft.Network/networkInterfaces',concat(variables('nicName'),copyIndex()))]"
-                         }
-                    ]
-                },
-                "hardwareProfile": {
-                    "vmSize": "Standard_DS2_v2"
-                },
-                "diagnosticsProfile": {
-                    "bootDiagnostics": {
-                        "enabled": true
-                    }
-                }
-                
-            },
-            
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/networkInterfaces',concat(variables('nicName'),copyIndex()))]",
+                "[resourceId('Microsoft.Network/networkInterfaces', concat(variables('nicName'),copyIndex()))]",
                 "[resourceId('Microsoft.Storage/storageAccounts', variables('uniqueStorageName'))]"
             ]
         }

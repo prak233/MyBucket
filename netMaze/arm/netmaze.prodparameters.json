@@ -6,7 +6,7 @@
             "value": "eastasia" 
         },
         "storageName": {
-            "value": "eastasia"
+            "value": "eastasia015"
         },
         "skuTypes": {
             "value": "Standard_LRS"
@@ -15,10 +15,10 @@
             "value": 3
         },
         "envName": {
-            "value": "prod"
+            "value": "Prod"
         },
         "projectName": {
-            "value": "netmaze"
+            "value": "Netmaze"
         },
         "vnetAddressPrefix": {
             "value": "192.168.0.0/16"
