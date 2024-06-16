@@ -7,6 +7,7 @@
             "defaultValue": "westus",
             "allowedValues": [
                 "northeurope",
+                "eastasia",
                 "westus",
                 "eastus",
                 "westeurope",
@@ -18,6 +19,28 @@
             "minLength": 5,
             "maxLength": 15
         },
+
+        "skuTypes": {
+            "type": "string",
+            "defaultValue": "Standard_LRS",
+            "allowedValues": [
+                "Standard_LRS",
+                "Standard_ZRS",
+                "Standard_GRS",
+                "Standard_GZRS",
+                "Premium_LRS",
+                "Premium_ZRS",
+                "Premium_GRS"
+            ]
+        },
+
+        "vmCount": {
+            "type": "int",
+            "metadata": {
+                "description": "Enter the VM instances to deploy"
+            }
+        },
+
         "envName": {
             "type": "string",
             "defaultValue": "prod",
@@ -33,15 +56,6 @@
         "vnetAddressPrefix": {
             "type": "string"
         },
-        "webappSubnetPrefix": {
-            "type": "string"
-        },
-        "adminSubnetPrefix": {
-            "type": "string"
-        },
-        "dbSubnetPrefix": {
-            "type": "string"
-        },
         "adminUsername": {
             "type": "string"
         },
@@ -51,12 +65,10 @@
             "maxLength": 15
         },
         "vmOffer": {
-            "type": "string",
-            "defaultValue": "WindowsServer"
+            "type": "string"
         },
         "vmPublisher": {
-            "type": "string",
-            "defaultValue": "MicrosoftWindowsServer"   
+            "type": "string"  
         },
         "vmsku": {
             "type": "string",
@@ -87,18 +99,18 @@
                 "2022-datacenter-smalldisk-g2"
             ]
         }
-    
-        
-        
+     
         
     },
     "functions": [],
     "variables": {
         "uniqueStorageName": "[concat(parameters('storageName'),uniqueString(resourceGroup().id))]",
-        "vnetName": "[format('{0}-{1}-vnet',parameters('envName'),parameters('projectName'))]",
-        "nicName": "[format('{0}-{1}-nic',parameters('envName'),parameters('projectName'))]",
-        "nsgName": "[format('{0}-{1}-nsg',parameters('envName'),parameters('projectName'))]",
-        "webNsgName":"[format('{0}-{1}-webnsg',parameters('envName'),parameters('projectName'))]"
+        "vnetName": "[format('{0}-{1}Vnet',parameters('envName'),parameters('projectName'))]",
+        "publicipName": "[format('{0}-{1}Publicip',parameters('envName'),parameters('projectName'))]",
+        "subnetName": "[format('{0}Subnet',parameters('envName'))]",
+        "nicName": "[format('{0}Nic',parameters('envName'))]",
+        "nsgName": "[format('{0}-{1}Nsg',parameters('envName'),parameters('projectName'))]"
+    
         
     },
     "resources": [
@@ -107,12 +119,28 @@
             "apiVersion": "2023-01-01",
             "kind": "StorageV2",
             "name": "[variables('uniqueStorageName')]",
-            "sku": {
-                "name": "Standard_LRS"
-            },
+            "sku": "[parameters('skuTypes')]",
             "location": "[parameters('location')]",
             "properties": {
                 "allowBlobPublicAccess": true
+            }
+        },
+
+        {
+            "type": "Microsoft.Network/publicIPAddresses",
+            "apiVersion": "2023-04-01",
+            "name": "[concat(variables('publicipName'),copyIndex())]",
+            "copy": {
+                "name": "publicloop",
+                "count": "[parameters('vmCount')]"
+            },
+            "location": "[parameters('location')]",
+            "properties": {
+                "publicIPAllocationMethod": "Static"
+            },
+            "sku": {
+                "name": "Standard",
+                "tier": "Regional"
             }
         },
 
@@ -121,6 +149,10 @@
             "apiVersion": "2023-04-01",
             "location": "[parameters('location')]",
             "name": "[variables('nsgName')]",
+            "copy": {
+                "name": "nsgCopy",
+                "count": "[parameters('vmCount')]"
+            },
             "properties": {
                 "securityRules": [
                     {
@@ -134,63 +166,39 @@
                             "sourceAddressPrefix": "*",
                             "destinationPortRange": "3389",
                             "destinationAddressPrefix": "*"
-                            
-                            
-                        }
-                     }
-                ]
-            }
-        },
-        {
-            "type": "Microsoft.Network/networkSecurityGroups",
-            "apiVersion": "2023-04-01",
-            "name": "[variables('webNsgName')]",
-            "location": "[parameters('location')]",
-            "properties": {
-                "securityRules": [
-                    {
-                        "name": "allow-http",
-                        "properties": {
-                            "access": "Allow",
-                            "protocol": "Tcp",
-                            "priority": 101,
-                            "direction": "Inbound",
-                            "sourcePortRange": "*",
-                            "sourceAddressPrefix": "*",
-                            "destinationPortRange": "80",
-                            "destinationAddressPrefix": "*"
+                                                      
                         }
                      },
                      {
                         "name": "allow-https",
                         "properties": {
                             "access": "Allow",
+                            "priority": 101,
                             "direction": "Inbound",
-                            "priority": 200,
                             "protocol": "Tcp",
                             "sourcePortRange": "*",
                             "sourceAddressPrefix": "*",
                             "destinationPortRange": "443",
                             "destinationAddressPrefix": "*"
                         }
-                      },
-                      {
-                        "name": "allow-rdp",
+                     },
+                     {
+                        "name": "allow-http",
                         "properties": {
                             "access": "Allow",
-                            "priority": 120,
-                            "direction": "Inbound",
                             "protocol": "Tcp",
+                            "priority": 200,
+                            "direction": "Inbound",
                             "sourcePortRange": "*",
                             "sourceAddressPrefix": "*",
-                            "destinationPortRange": "3389",
+                            "destinationPortRange": "80",
                             "destinationAddressPrefix": "*"
-                                                      
                         }
-                      }
+                     }
                 ]
             }
-        },       
+        },
+               
         
         {
             "type": "Microsoft.Network/virtualnetworks",
@@ -203,41 +211,29 @@
                     "addressPrefixes": [
                         "[parameters('vnetAddressPrefix')]"
                     ]
-                },
-                "subnets": [
-                    {
-                        "name": "webapp-subnet",
-                        "properties": {
-                            "addressPrefix": "[parameters('webappSubnetPrefix')]",
-                            "networkSecurityGroup": {
-                                "id": "[resourceId('Microsoft.Network/networkSecurityGroups',variables('webNsgName'))]"
-                            }
-                        }
+                }
+                
+            }         
+            
+         },
 
-                     },
-                     {
-                        "name": "admin-subnet",
-                        "properties": {
-                            "addressPrefix": "[parameters('adminSubnetPrefix')]",
-                            "networkSecurityGroup": {
-                                "id": "[resourceId('Microsoft.Network/networkSecurityGroups',variables('nsgName'))]"
-                            }
-                        }
-                     },
-                     {
-                        "name": "db-subnet",
-                        "properties": {
-                            "addressPrefix": "[parameters('dbSubnetPrefix')]",
-                            "networkSecurityGroup": {
-                                "id": "[resourceId('Microsoft.Network/networkSecurityGroups',variables('nsgName'))]"
-                            }
-                        }
-                     }
-                ]
+         {
+            "type": "Microsoft.Network/virtualnetworks/subnets",
+            "apiVersion": "2023-04-01",
+            "name": "[concat(variables('subnetName'),copyIndex())]",
+            "copy": {
+                "name": "subnetCopy",
+                "count": "[parameters('vmCount')]"
+            },
+            "properties": {
+                "addressPrefix": "[format('{0}.{1}.{2}.0/24', split(parameters('vnetAddressPrefix'), '.')[0], split(parameters('vnetAddressPrefix'),'.')[1], copyIndex())]",
+                "networkSecurityGroup": {
+                    "id": "[resourceId('Microsoft.Network/networkSecurityGroups', concat(variables('nsgName'), copyIndex()))]"
+                }
             },
             "dependsOn": [
-                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgName'))]",
-                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('webNsgName'))]"
+                "[resourceId('Microsoft.Network/virtualnetworks', variables('vnetName'))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgName'))]"
             ]
          },
 
@@ -245,7 +241,7 @@
             "type": "Microsoft.Network/networkInterfaces",
             "apiVersion": "2023-04-01",
             "location":"[parameters('location')]",
-            "name": "[format('web-{0}',variables('nicName'))]",
+            "name": "[concat(variables('nicName'),copyIndex())]",
             "properties": {
                 "ipConfigurations": [
                     {
@@ -253,162 +249,30 @@
                         "properties": {
                             "privateIPAllocationMethod": "Dynamic",
                             "subnet": {
-                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), 'webapp-subnet')]"
-                                        }
+                                        "id": "[resourceId('Microsoft.Network/virtualnetworks/subnets',concat(variables('subnetName'),copyIndex()))]"
+                                      },
+                            "publicIPAddress": "[resourceId('Microsoft.Network/publicIPAddresses',concat(variables('publicipName'),copyIndex()))]"
                                     }
                     }
                ]
             },
             "dependsOn": [
-                "[resourceId('Microsoft.Network/virtualnetworks', variables('vnetName'))]"
-            ]
-         },
-        {
-            "type": "Microsoft.Network/networkInterfaces",
-            "apiVersion": "2023-04-01",
-            "location":"[parameters('location')]",
-            "name": "[format('admin-{0}',variables('nicName'))]",
-            "properties": {
-                "ipConfigurations": [
-                    {
-                        "name": "ipconfig1",
-                        "properties": {
-                            "privateIPAllocationMethod": "Dynamic",
-                            "subnet": {
-                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), 'admin-subnet')]"
-                                        }
-                                    }
-                    }
-               ]
-            },
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/virtualnetworks', variables('vnetName'))]"
-            ]
-         },
-         
+                "[resourceId('Microsoft.Network/publicIPAddresses', concat(variables('publicipName'),copyIndex()))]",
+                "[resourceId('Microsoft.Network/virtualnetworks/subnets', concat(variables('subnetName'),copyIndex()))]"
 
-         {
-            "type": "Microsoft.Network/networkInterfaces",
-            "apiVersion": "2023-04-01",
-            "location":"[parameters('location')]",
-            "name": "[format('db-{0}',variables('nicName'))]",
-            "properties": {
-                "ipConfigurations": [
-                    {
-                        "name": "ipconfig1",
-                        "properties": {
-                            "privateIPAllocationMethod": "Dynamic",
-                            "subnet": {
-                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), 'db-subnet')]"
-                                        }
-                                    }
-                    }
-               ]
-            },
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/virtualnetworks', variables('vnetName'))]"
             ]
-         },
-
-         {
-            "type": "Microsoft.Network/publicIPAddresses",
-            "apiVersion": "2023-04-01",
-            "name": "[format('{0}public-ip',parameters('projectName'))]",
-            "location": "[parameters('location')]",
-            "properties": {
-                "publicIPAddressVersion": "IPv4",
-                "publicIPAllocationMethod": "Static"
-            },
-            "sku": {
-                "name": "Standard",
-                "tier": "Regional"
-            }
-         },
-
-         {
-            "type": "Microsoft.Network/loadBalancers",
-            "apiVersion": "2023-04-01",
-            "name": "[format('{0}-LB',parameters('projectName'))]",
-            "sku": {
-                "name": "Standard",
-                "tier": "Regional"
-            },
-            "location": "[parameters('location')]",
-            "properties": {
-                "frontendIPConfigurations": [
-                    {
-                        "name": "frontend-ip",
-                        "properties": {
-                            "publicIPAddress": {
-                                "id": "[resourceId('Microsoft.Network/publicIPAddresses',format('{0}public-ip',parameters('projectName')))]"
-                            }
-                        }
-                     }
-                     
-                ],
-                "probes": [
-                    {
-                        "name": "LB-probe",
-                        "properties": {
-                            "port": 80,
-                            "numberOfProbes": 5,
-                            "protocol": "Tcp",
-                            "intervalInSeconds": 10
-                        }
-                     }
-                ],
-                "backendAddressPools": [
-                    {
-                        "name": "LB-pools"
-                    }
-                ],
-                "loadBalancingRules": [
-                    {
-                        "name": "LB-rule",
-                        "properties": {
-                            "frontendIPConfiguration": {
-                                "id": "[resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations',format('{0}-LB',parameters('projectName')),'frontend-ip')]"
-                            },
-                            "backendAddressPool": {
-                                "id": "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools',format('{0}-LB',parameters('projectName')),'LB-pools')]"
-                            },
-                            "probe": {
-                                "id": "[resourceId('Microsoft.Network/loadBalancers/probes',format('{0}-LB',parameters('projectName')),'LB-probe')]"
-                            },
-                            "protocol": "Tcp",
-                            "frontendPort":80,
-                            "backendPort": 80,
-                            "idleTimeoutInMinutes": 5,
-                            "enableFloatingIP": false
-                        }
-                     }
-                ],
-                "inboundNatRules": [
-                    {
-                        "name": "LB-RDP",
-                        "properties": {
-                            "protocol": "Tcp",
-                            "frontendPortRangeStart": 1000,
-                            "frontendPortRangeEnd": 1100,
-                            "backendPort":3389,
-                            "frontendIPConfiguration": {
-                                "id": "[resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations',format('{0}-LB',parameters('projectName')),'frontend-ip')]"
-                            },
-                            "idleTimeoutInMinutes": 5,
-                            "enableFloatingIP": false
-                            
-                        }
-                     }
-                ]
-            }
          },
 
 
          {
             "type": "Microsoft.Compute/virtualMachines",
             "apiVersion": "2023-03-01",
-            "name": "[format('webvm-{0}',parameters('projectName'))]",
+            "name": "[concat(format('{0}vm',parameters('projectName')),copyIndex())]",
            "location": "[parameters('location')]",
+           "copy": {
+            "name": "vmloop",
+            "count": "[parameters('vmCount')]"
+           },
            "properties": {
             "storageProfile": {
                 "imageReference": {
@@ -438,12 +302,12 @@
                     "windowsConfiguration": {
                         "enableAutomaticUpdates": true
                     },
-                    "computerName": "[format('webvm-{0}',parameters('projectName'))]"
+                    "computerName": "[concat(format('{0}vm',parameters('projectName')),copyIndex())]"
                 },
                 "networkProfile": {
                     "networkInterfaces": [
                         {
-                            "id": "[resourceId('Microsoft.Network/networkInterfaces',format('web-{0}',variables('nicName')))]"
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces',concat(variables('nicName'),copyIndex()))]"
                          }
                     ]
                 },
@@ -503,7 +367,7 @@
                 "networkProfile": {
                     "networkInterfaces": [
                         {
-                            "id": "[resourceId('Microsoft.Network/networkInterfaces',format('admin-{0}',variables('nicName')))]"
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces',concat(variables('nicName'),copyIndex()))]"
                          }
                     ]
                 },
@@ -519,14 +383,11 @@
             },
             
             "dependsOn": [
-                "[resourceId('Microsoft.Network/networkInterfaces', format('admin-{0}',variables('nicName')))]",
+                "[resourceId('Microsoft.Network/networkInterfaces',concat(variables('nicName'),copyIndex()))]",
                 "[resourceId('Microsoft.Storage/storageAccounts', variables('uniqueStorageName'))]"
             ]
         }
-
-     
-    
          
-    ],
-    "outputs": {}
+    ]
+    
 }
