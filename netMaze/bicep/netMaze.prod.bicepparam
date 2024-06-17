@@ -1,8 +1,8 @@
 using 'netMaze.bicep'
 
 param vmCount = 3
-param location = 'eastasia'
-param storageName = 'pkp233'
+param location = 'eastus'
+param storageName = 'eastus233'
 param envName = 'Prod'
 param projectName = 'Netmaze'
 param username = 'pratul'

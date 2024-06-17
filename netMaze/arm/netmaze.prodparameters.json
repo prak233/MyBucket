@@ -3,10 +3,10 @@
     "contentVersion": "1.0.0.0",
     "parameters": {
         "location": {
-            "value": "eastasia" 
+            "value": "eastus" 
         },
         "storageName": {
-            "value": "eastasia015"
+            "value": "eastus015"
         },
         "skuTypes": {
             "value": "Standard_LRS"
