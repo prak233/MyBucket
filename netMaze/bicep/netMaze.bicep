@@ -97,8 +97,8 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-04-01' = {
   }
 }
 
-resource nsg 'Microsoft.Network/networkSecurityGroups@2023-11-01' = [for i in range(0, vmCount): {
-  name: '${nsgName}${i}'
+resource nsg 'Microsoft.Network/networkSecurityGroups@2023-11-01' = {
+  name: nsgName
   location:location
   properties:{
     securityRules:[
@@ -166,7 +166,7 @@ resource subnets 'Microsoft.Network/virtualNetworks/subnets@2023-11-01'= [for i 
   properties: {
     addressPrefix: format('{0}.{1}.{2}.0/24', split(vnetPrefix, '.')[0],split(vnetPrefix, '.')[1], i)
     networkSecurityGroup:{
-      id: nsg[i].id
+      id: nsg.id
     }
   }
 

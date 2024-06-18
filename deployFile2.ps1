@@ -1,13 +1,9 @@
 $template = "D:\VS CoDe\Project\netMaze\bicep\netMaze.bicep"
-$templatepara = "D:\VS CoDe\Project\netMaze\bicep\netMaze.prod.bicepparam"
-$rgName = 'pratul015'
-$loc = 'westus'
-
-New-AzResourceGroup -Name $rgName -Location $loc
+$templatepara = "D:\VS CoDe\Project\netMaze\bicep\netMaze.test.bicepparam"
 
 New-AzResourceGroupDeployment `
 -Name bicepDeploy `
--ResourceGroupName $rgname `
+-ResourceGroupName pratul233 `
 -TemplateFile $template `
 -TemplateParameterFile $templatepara -verbose
 
